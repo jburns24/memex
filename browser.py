@@ -1,7 +1,8 @@
 import tkinter
 
-WIDTH, HEIGH = 800, 600
+WIDTH, HEIGH = 800, 600  # Window dimensions in pixels
 HSTEP, VSTEP = 13, 18  # Horizontal and vertical spacing between characters
+SCROLL_STEP = 100  # Number of pixels to scroll with each down key press
 
 
 class Browser:
@@ -13,26 +14,55 @@ class Browser:
     def __init__(self):
         """
         Initialize the browser window and canvas for rendering content.
+
+        Sets up:
+        - Vertical scroll position
+        - Main application window
+        - Key bindings for scrolling
+        - Canvas for rendering text
         """
-        self.window = tkinter.Tk()
+        self.scroll = 0  # Tracks vertical scroll position in pixels
+        self.window = tkinter.Tk()  # Create the main application window
+        self.window.bind("<Down>", self.scrolldown)  # Bind down arrow key to scroll
         self.canvas = tkinter.Canvas(
             self.window,
             width=WIDTH,
             height=HEIGH,
         )
-        self.canvas.pack()
+        self.canvas.pack()  # Add canvas to the window
+
+    def scrolldown(self, e):
+        """
+        Handle down arrow key press to scroll content downward.
+
+        Args:
+            e: Event object (not used but required by tkinter bind)
+        """
+        self.scroll += SCROLL_STEP
+        self.draw()  # Redraw content with updated scroll position
 
     def draw(self):
         """
         Render text content on the canvas.
         Draws each character at its calculated position.
+
+        Implements a basic viewport culling - only drawing characters
+        that are currently visible within the scroll viewport.
         """
+        self.canvas.delete("all")  # Clear the canvas before redrawing
         for x, y, c in self.display_text:
-            self.canvas.create_text(x, y, text=c)
+            # Skip characters below the visible area
+            if y > self.scroll + HEIGH:
+                continue
+            # Skip characters above the visible area
+            if y + VSTEP < self.scroll:
+                continue
+            self.canvas.create_text(x, y - self.scroll, text=c)
 
     def layout(self, t):
         """
         Calculate the position of each character for rendering.
+        Implements simple text layout with basic line wrapping.
 
         Args:
             t: String of text content to be displayed
@@ -42,14 +72,15 @@ class Browser:
             for each character in the text
         """
         display_text = []
-        cursor_x, cursor_y = HSTEP, VSTEP
+        cursor_x, cursor_y = HSTEP, VSTEP  # Start position for text layout
         for c in t:
             display_text.append((cursor_x, cursor_y, c))
+            # Line wrapping logic - move to next line if we reach the window edge
             if cursor_x >= WIDTH - HSTEP:
-                cursor_y += VSTEP
-                cursor_x = HSTEP
+                cursor_y += VSTEP  # Move down one line
+                cursor_x = HSTEP  # Reset to left margin
             else:
-                cursor_x += HSTEP
+                cursor_x += HSTEP  # Move to the next character position
         return display_text
 
     def load(self, url):
@@ -59,16 +90,21 @@ class Browser:
         Args:
             url: URL object with a request method that returns HTML content
 
-        Renders the text content character by character, wrapping when reaching the window width.
+        Process:
+        1. Fetch content from URL
+        2. Parse HTML to extract text
+        3. Calculate text layout positions
+        4. Draw the content
         """
-        body = url.request()
-        t = self.lex(body)
-        self.display_text = self.layout(t)
-        self.draw()
+        body = url.request()  # Get HTML content from the URL
+        t = self.lex(body)  # Parse HTML and extract text
+        self.display_text = self.layout(t)  # Calculate layout positions
+        self.draw()  # Render the content to the canvas
 
     def lex(self, body):
         """
         Parse HTML content and extract only the text (removing HTML tags).
+        This is a very simple HTML parser that strips tags but doesn't handle entities or other HTML features.
 
         Args:
             body: HTML content as a string
@@ -77,12 +113,12 @@ class Browser:
             String containing only the text content (no HTML tags)
         """
         text = ""
-        in_tag = False
+        in_tag = False  # Flag to track if we're currently inside an HTML tag
         for c in body:
             if c == "<":
-                in_tag = True
+                in_tag = True  # Start of a tag
             elif c == ">":
-                in_tag = False
+                in_tag = False  # End of a tag
             elif not in_tag:
-                text += c
+                text += c  # If not in a tag, add character to text
         return text
