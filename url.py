@@ -1,16 +1,26 @@
 import socket
+from enum import Enum, auto
+
+
+class Protocol(Enum):
+    TCP = auto()
+    FILE = auto()
 
 
 class URL:
     def __init__(self, url):
         # Split out the schema
         self.schema, url = url.split("://", 1)
-        assert self.schema in ["http", "https"]
+        assert self.schema in ["http", "https", "file"]
 
         if self.schema == "http":
             self.port = 80
+            self.protocol = Protocol.TCP
         if self.schema == "https":
             self.port = 443
+            self.protocol = Protocol.TCP
+        if self.schema == "file":
+            self.protocol = Protocol.FILE
 
         # Pull out the host
         if "/" not in url:
@@ -18,7 +28,7 @@ class URL:
         self.host, url = url.split("/", 1)
         self.path = "/" + url
 
-    def request(self, headers):
+    def tcp_request(self, headers):
         s = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_STREAM,
@@ -65,3 +75,18 @@ class URL:
         content = response.read()
         s.close()
         return content
+
+    def file_request(self):
+        content = ""
+        with open(self.path, "r") as file:
+            content = file.read()
+        return content
+
+    def request(self, headers):
+        if self.protocol == Protocol.TCP:
+            return self.tcp_request(headers)
+        elif self.protocol == Protocol.FILE:
+            # Protocol
+            return self.file_request()
+        else:
+            assert False, "Unsupported protocol: {}".format(self.protocol)
