@@ -1,32 +1,34 @@
 import socket
 from enum import Enum, auto
+from urllib.parse import urlparse
 
 
-class Protocol(Enum):
+class Scheme(Enum):
     TCP = auto()
     FILE = auto()
 
 
 class URL:
     def __init__(self, url):
-        # Split out the schema
-        self.schema, url = url.split("://", 1)
-        assert self.schema in ["http", "https", "file"]
+        # Split out the scheme
+        parsed_url = urlparse(url)
+        self.scheme = parsed_url.scheme.lower()
+        assert self.scheme in ["http", "https", "file"]
 
-        if self.schema == "http":
+        if self.scheme == "http":
             self.port = 80
-            self.protocol = Protocol.TCP
-        if self.schema == "https":
+            self.protocol = Scheme.TCP
+        if self.scheme == "https":
             self.port = 443
-            self.protocol = Protocol.TCP
-        if self.schema == "file":
-            self.protocol = Protocol.FILE
+            self.protocol = Scheme.TCP
+        if self.scheme == "file":
+            self.protocol = Scheme.FILE
 
         # Pull out the host
         if "/" not in url:
             url = url + "/"
-        self.host, url = url.split("/", 1)
-        self.path = "/" + url
+        self.host = parsed_url.hostname
+        self.path = parsed_url.path
 
     def tcp_request(self, headers):
         s = socket.socket(
@@ -37,7 +39,7 @@ class URL:
 
         s.connect((self.host, self.port))
 
-        if self.schema == "https":
+        if self.scheme == "https":
             import ssl
 
             ctx = ssl.create_default_context()
@@ -83,10 +85,9 @@ class URL:
         return content
 
     def request(self, headers):
-        if self.protocol == Protocol.TCP:
+        if self.protocol == Scheme.TCP:
             return self.tcp_request(headers)
-        elif self.protocol == Protocol.FILE:
-            # Protocol
+        elif self.protocol == Scheme.FILE:
             return self.file_request()
         else:
             assert False, "Unsupported protocol: {}".format(self.protocol)
