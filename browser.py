@@ -3,6 +3,11 @@ import tkinter
 WIDTH, HEIGH = 800, 600  # Window dimensions in pixels
 HSTEP, VSTEP = 13, 18  # Horizontal and vertical spacing between characters
 SCROLL_STEP = 100  # Number of pixels to scroll with each down key press
+HEADERS = [
+    "User-Agent: Memex/1.0",
+    "Accept: text/html",
+    "Accept-Language: en-US,en;q=0.9",
+]
 
 
 class Browser:
@@ -96,7 +101,7 @@ class Browser:
         3. Calculate text layout positions
         4. Draw the content
         """
-        body = url.request()  # Get HTML content from the URL
+        body = url.request(HEADERS)  # Get HTML content from the URL
         t = self.lex(body)  # Parse HTML and extract text
         self.display_text = self.layout(t)  # Calculate layout positions
         self.draw()  # Render the content to the canvas

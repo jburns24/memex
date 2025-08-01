@@ -18,7 +18,7 @@ class URL:
         self.host, url = url.split("/", 1)
         self.path = "/" + url
 
-    def request(self):
+    def request(self, headers):
         s = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_STREAM,
@@ -34,8 +34,11 @@ class URL:
             s = ctx.wrap_socket(s, server_hostname=self.host)
 
         # Construct request and send it
-        request = "GET {} HTTP/1.0\r\n".format(self.path)
+        request = "GET {} HTTP/1.1\r\n".format(self.path)
         request += "Host: {}\r\n".format(self.host)
+        request += "Connection: close\r\n"
+        for header in headers:
+            request += "{}\r\n".format(header)
         request += "\r\n"
         s.send(request.encode("utf8"))
 
