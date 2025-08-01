@@ -4,6 +4,7 @@ import tkinter
 
 if __name__ == "__main__":
     import sys
+
     browser = Browser()
     browser.load(url=URL(sys.argv[1]))
     tkinter.mainloop()

@@ -1,5 +1,6 @@
 import socket
 
+
 class URL:
     def __init__(self, url):
         # Split out the schema
@@ -19,15 +20,16 @@ class URL:
 
     def request(self):
         s = socket.socket(
-                family=socket.AF_INET,
-                type=socket.SOCK_STREAM,
-                proto=socket.IPPROTO_TCP,
-            )
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
 
         s.connect((self.host, self.port))
 
         if self.schema == "https":
             import ssl
+
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
 
@@ -48,7 +50,8 @@ class URL:
         response_headers = {}
         while True:
             line = response.readline()
-            if line == "\r\n": break
+            if line == "\r\n":
+                break
             header, value = line.split(":", 1)
             response_headers[header.casefold()] = value.strip()
 
