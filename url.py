@@ -1,11 +1,16 @@
 import socket
+import base64
 from enum import Enum, auto
 from urllib.parse import urlparse
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 class Scheme(Enum):
     TCP = auto()
     FILE = auto()
+    DATA = auto()
 
 
 class URL:
@@ -13,22 +18,41 @@ class URL:
         # Split out the scheme
         parsed_url = urlparse(url)
         self.scheme = parsed_url.scheme.lower()
-        assert self.scheme in ["http", "https", "file"]
+        assert self.scheme in ["http", "https", "file", "data"]
 
         if self.scheme == "http":
             self.port = 80
-            self.protocol = Scheme.TCP
+            self.scheme_enum = Scheme.TCP
         if self.scheme == "https":
             self.port = 443
-            self.protocol = Scheme.TCP
+            self.scheme_enum = Scheme.TCP
         if self.scheme == "file":
-            self.protocol = Scheme.FILE
+            self.scheme_enum = Scheme.FILE
+        if self.scheme == "data":
+            self.scheme_enum = Scheme.DATA
 
-        # Pull out the host
-        if "/" not in url:
-            url = url + "/"
         self.host = parsed_url.hostname
         self.path = parsed_url.path
+
+    def parse_data_path(self, path):
+        # Split path into MIME type and data at the first comma
+        mime_data = path.split(",", 1)
+        logging.info("mime_type: {}".format(mime_data))
+        if len(mime_data) < 2:
+            mime_data.append("")  # Handle cases like "data:," or "data:text/plain,"
+
+        mime_type, data = mime_data
+        is_base64 = mime_type.endswith(";base64")
+
+        # Remove ;base64 from MIME type if present
+        if is_base64:
+            mime_type = mime_type[:-7]
+
+        # If no MIME type specified, default to text/plain
+        if not mime_type:
+            mime_type = "text/plain;charset=US-ASCII"
+
+        return mime_type, is_base64, data
 
     def tcp_request(self, headers):
         s = socket.socket(
@@ -84,10 +108,25 @@ class URL:
             content = file.read()
         return content
 
-    def request(self, headers):
-        if self.protocol == Scheme.TCP:
-            return self.tcp_request(headers)
-        elif self.protocol == Scheme.FILE:
-            return self.file_request()
+    def data_request(self, mime_type, is_base64, data):
+        if mime_type.startswith("text/plain") or mime_type.startswith("text/html"):
+            content = data
+            if is_base64:
+                content = base64.b64decode(data).decode("utf-8")
+            return content
         else:
-            assert False, "Unsupported protocol: {}".format(self.protocol)
+            assert False, "Unsupported mime_type"
+            return data
+
+    def request(self, headers):
+        if self.scheme_enum == Scheme.TCP:
+            return self.tcp_request(headers)
+        elif self.scheme_enum == Scheme.FILE:
+            return self.file_request()
+        elif self.scheme_enum == Scheme.DATA:
+            mime_type, is_base64, data = self.parse_data_path(self.path)
+            content = self.data_request(mime_type, is_base64, data)
+            logging.info("content from data_request: {}".format(content))
+            return content
+        else:
+            assert False, "Unsupported protocol: {}".format(self.scheme_enum)
