@@ -1,4 +1,5 @@
 import tkinter
+import tkinter.font
 
 WIDTH, HEIGH = 800, 600  # Window dimensions in pixels
 HSTEP, VSTEP = 13, 18  # Horizontal and vertical spacing between characters
@@ -62,30 +63,33 @@ class Browser:
             # Skip characters above the visible area
             if y + VSTEP < self.scroll:
                 continue
-            self.canvas.create_text(x, y - self.scroll, text=c)
+            self.canvas.create_text(x, y - self.scroll, text=c, anchor="nw")
 
-    def layout(self, t):
+    def layout(self, text):
         """
         Calculate the position of each character for rendering.
         Implements simple text layout with basic line wrapping.
 
         Args:
-            t: String of text content to be displayed
+            text: String of text content to be displayed
 
         Returns:
             List of tuples containing (x_position, y_position, character)
             for each character in the text
         """
         display_text = []
+        font = tkinter.font.Font()
         cursor_x, cursor_y = HSTEP, VSTEP  # Start position for text layout
-        for c in t:
-            display_text.append((cursor_x, cursor_y, c))
-            # Line wrapping logic - move to next line if we reach the window edge
-            if cursor_x >= WIDTH - HSTEP:
-                cursor_y += VSTEP  # Move down one line
-                cursor_x = HSTEP  # Reset to left margin
+        for word in text.split():
+            w = font.measure(word)
+            if cursor_x + w > WIDTH - HSTEP:
+                # Calling .metrics() with "linespace" gives me back just that one metric
+                cursor_y += font.metrics("linespace") * 1.25  # Move down a line
+                cursor_x = HSTEP  # Reset to the left margin
             else:
-                cursor_x += HSTEP  # Move to the next character position
+                cursor_x += HSTEP
+                display_text.append((cursor_x, cursor_y, word))
+                cursor_x += w + font.measure(" ")  # Move to the next character position
         return display_text
 
     def load(self, url):
